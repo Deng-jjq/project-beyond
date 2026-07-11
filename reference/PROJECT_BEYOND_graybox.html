@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <title>PROJECT BEYOND — Graybox</title>
+  <style>
+    :root{
+      --bg:#000;
+      --fg:#f5f5f2;
+      --muted:rgba(245,245,242,.48);
+      --faint:rgba(245,245,242,.14);
+      --line:rgba(245,245,242,.18);
+      --ease:cubic-bezier(.2,.65,.2,1);
+    }
+    *{box-sizing:border-box}
+    html{
+      scroll-behavior:smooth;
+      background:var(--bg);
+      color:var(--fg);
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body{
+      margin:0;
+      background:#000;
+      overflow-x:hidden;
+    }
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:50;
+      opacity:.22;
+      background:
+        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px);
+      background-size:100% 4px, 4px 100%;
+      mix-blend-mode:screen;
+    }
+    .topbar{
+      position:fixed;
+      inset:0 0 auto 0;
+      z-index:100;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:calc(22px + env(safe-area-inset-top)) 5vw 18px;
+      letter-spacing:.28em;
+      font-size:12px;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.86);
+      pointer-events:none;
+    }
+    .progress{
+      position:fixed;
+      z-index:100;
+      right:4vw;
+      top:50%;
+      transform:translateY(-50%);
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+      pointer-events:none;
+    }
+    .progress i{
+      display:block;
+      width:16px;
+      height:1px;
+      background:rgba(255,255,255,.24);
+      transform-origin:right center;
+      transition:width .5s var(--ease), background .5s var(--ease), opacity .5s var(--ease);
+    }
+    .progress i.active{
+      width:44px;
+      background:rgba(255,255,255,.95);
+    }
+
+    .scene{
+      position:relative;
+      min-height:100svh;
+      display:grid;
+      place-items:center;
+      overflow:hidden;
+      isolation:isolate;
+      padding:12vh 8vw;
+    }
+    .scene::after{
+      content:"";
+      position:absolute;
+      inset:auto 0 0 0;
+      height:1px;
+      background:linear-gradient(90deg, transparent, rgba(255,255,255,.07), transparent);
+    }
+    .copy{
+      position:relative;
+      z-index:10;
+      text-align:center;
+      max-width:860px;
+      opacity:0;
+      transform:translateY(30px);
+      transition:opacity 1.2s var(--ease), transform 1.2s var(--ease);
+    }
+    .scene.in-view .copy{
+      opacity:1;
+      transform:none;
+    }
+    .eyebrow{
+      margin-bottom:18px;
+      color:rgba(255,255,255,.52);
+      letter-spacing:.45em;
+      text-transform:uppercase;
+      font-size:11px;
+    }
+    h1,h2,p{margin:0}
+    h1,h2{
+      font-weight:500;
+      text-transform:uppercase;
+      letter-spacing:.18em;
+    }
+    h1{font-size:clamp(38px,9vw,112px)}
+    h2{font-size:clamp(30px,6vw,72px)}
+    .en{
+      margin-top:20px;
+      font-size:clamp(17px,2.1vw,28px);
+      line-height:1.5;
+      letter-spacing:.06em;
+    }
+    .zh{
+      margin-top:10px;
+      color:rgba(255,255,255,.52);
+      font-size:clamp(13px,1.2vw,17px);
+      letter-spacing:.12em;
+      line-height:1.8;
+    }
+
+    .crosshair{
+      position:absolute;
+      width:min(54vw,520px);
+      aspect-ratio:1;
+      opacity:.55;
+      transform:translate3d(var(--px,0), var(--py,0), 0);
+      transition:transform .16s linear;
+    }
+    .crosshair::before,.crosshair::after{
+      content:"";
+      position:absolute;
+      background:rgba(255,255,255,.13);
+    }
+    .crosshair::before{width:100%;height:1px;top:50%;left:0}
+    .crosshair::after{height:100%;width:1px;left:50%;top:0}
+
+    .pulse{
+      position:absolute;
+      width:8px;height:8px;border-radius:50%;
+      background:#fff;
+      box-shadow:0 0 14px 5px rgba(255,255,255,.42);
+      animation:pulse 2.2s ease-in-out infinite;
+    }
+    .pulse::after{
+      content:"";
+      position:absolute;
+      inset:-12px;
+      border:1px solid rgba(255,255,255,.32);
+      border-radius:50%;
+      animation:ring 2.2s ease-out infinite;
+    }
+    @keyframes pulse{
+      0%,100%{transform:scale(.8);opacity:.55}
+      50%{transform:scale(1.25);opacity:1}
+    }
+    @keyframes ring{
+      from{transform:scale(.2);opacity:.85}
+      to{transform:scale(2.5);opacity:0}
+    }
+
+    .signal-ui{
+      position:absolute;
+      inset:0;
+      opacity:.74;
+    }
+    .signal-ui .scan{
+      position:absolute;
+      left:10vw;right:10vw;top:50%;
+      height:1px;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,.8),transparent);
+      transform:scaleX(.2);
+      animation:scan 3s ease-in-out infinite;
+    }
+    .signal-ui .wave{
+      position:absolute;
+      left:50%;top:50%;
+      width:min(70vw,780px);
+      height:170px;
+      transform:translate(-50%,-50%);
+      opacity:.35;
+      background:
+        radial-gradient(circle at 10% 50%, transparent 0 14px, rgba(255,255,255,.35) 15px 16px, transparent 17px),
+        radial-gradient(circle at 30% 50%, transparent 0 31px, rgba(255,255,255,.28) 32px 33px, transparent 34px),
+        radial-gradient(circle at 50% 50%, transparent 0 50px, rgba(255,255,255,.22) 51px 52px, transparent 53px),
+        radial-gradient(circle at 70% 50%, transparent 0 31px, rgba(255,255,255,.28) 32px 33px, transparent 34px),
+        radial-gradient(circle at 90% 50%, transparent 0 14px, rgba(255,255,255,.35) 15px 16px, transparent 17px);
+    }
+    @keyframes scan{
+      0%,100%{transform:scaleX(.15);opacity:.22}
+      50%{transform:scaleX(1);opacity:.9}
+    }
+
+    .departure-visual{
+      position:absolute;
+      left:50%;bottom:7vh;
+      width:min(66vw,560px);
+      height:min(33vw,270px);
+      transform:translateX(-50%);
+    }
+    .departure-visual .horizon{
+      position:absolute;
+      inset:0 0 auto 0;
+      height:100%;
+      border-top:2px solid rgba(255,255,255,.82);
+      border-radius:50% 50% 0 0 / 40% 40% 0 0;
+      box-shadow:0 -8px 24px rgba(255,255,255,.16);
+    }
+    .departure-visual .ship{
+      position:absolute;
+      left:50%;top:-5px;
+      width:10px;height:10px;
+      border-radius:50%;
+      transform:translateX(-50%);
+      background:#fff;
+      box-shadow:0 0 18px 4px rgba(255,255,255,.45);
+      animation:lift 4s ease-in-out infinite;
+    }
+    @keyframes lift{
+      0%,100%{transform:translate(-50%,0)}
+      50%{transform:translate(-50%,-50px)}
+    }
+
+    .orbit{
+      position:absolute;
+      left:50%;top:50%;
+      width:min(92vw,940px);
+      aspect-ratio:1;
+      transform:translate(-50%,-50%);
+      border:1px solid rgba(255,255,255,.15);
+      border-radius:50%;
+      animation:rotate 22s linear infinite;
+    }
+    .orbit::before,.orbit::after{
+      content:"";
+      position:absolute;
+      inset:8%;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:50%;
+    }
+    .orbit::after{inset:18%}
+    .probe{
+      position:absolute;
+      left:15%;top:67%;
+      width:82px;height:15px;
+      border:2px solid rgba(255,255,255,.75);
+      transform:rotate(-17deg);
+      box-shadow:0 0 14px rgba(255,255,255,.08);
+    }
+    @keyframes rotate{to{transform:translate(-50%,-50%) rotate(360deg)}}
+
+    .wormhole{
+      position:absolute;
+      width:min(78vw,720px);
+      aspect-ratio:1;
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow:
+        0 0 28px rgba(255,255,255,.08),
+        inset 0 0 70px rgba(255,255,255,.05);
+      animation:wh 8s ease-in-out infinite;
+    }
+    .wormhole::before,.wormhole::after{
+      content:"";
+      position:absolute;
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,.11);
+    }
+    .wormhole::before{inset:12%}
+    .wormhole::after{inset:26%}
+    @keyframes wh{
+      0%,100%{transform:rotate(0) scale(.92);filter:blur(.2px)}
+      50%{transform:rotate(35deg) scale(1.08);filter:blur(1.2px)}
+    }
+
+    .singularity{
+      position:absolute;
+      width:min(62vw,560px);
+      aspect-ratio:1;
+      border-radius:50%;
+      background:radial-gradient(circle at center,
+        #000 0 34%,
+        rgba(0,0,0,.96) 35% 42%,
+        rgba(255,255,255,.16) 48%,
+        rgba(255,255,255,.04) 58%,
+        transparent 70%);
+      filter:blur(4px);
+      animation:singularity 7s ease-in-out infinite;
+    }
+    @keyframes singularity{
+      0%,100%{transform:scale(.95) rotate(-3deg)}
+      50%{transform:scale(1.08) rotate(3deg)}
+    }
+    .scene-singularity .copy{
+      mix-blend-mode:screen;
+    }
+    .scene-singularity.in-view h2{
+      animation:distort 2.4s ease-in-out infinite;
+    }
+    @keyframes distort{
+      0%,100%{letter-spacing:.18em;transform:scaleX(1)}
+      50%{letter-spacing:.34em;transform:scaleX(1.08)}
+    }
+
+    .beyond-line{
+      position:absolute;
+      left:50%;bottom:28%;
+      width:min(72vw,760px);
+      height:min(30vw,260px);
+      transform:translateX(-50%);
+      border-top:1px solid rgba(255,255,255,.92);
+      border-radius:50% 50% 0 0 / 34% 34% 0 0;
+      box-shadow:0 -10px 42px rgba(255,255,255,.16);
+      opacity:.72;
+      animation:breathe 5s ease-in-out infinite;
+    }
+    .beyond-line::after{
+      content:"";
+      position:absolute;
+      left:50%;top:-5px;
+      width:10px;height:10px;
+      transform:translateX(-50%);
+      border-radius:50%;
+      background:#fff;
+      box-shadow:0 0 30px 8px rgba(255,255,255,.35);
+    }
+    @keyframes breathe{
+      0%,100%{transform:translateX(-50%) scaleX(.86);opacity:.45}
+      50%{transform:translateX(-50%) scaleX(1);opacity:.95}
+    }
+
+    .scroll-hint{
+      position:absolute;
+      left:50%;bottom:5vh;
+      transform:translateX(-50%);
+      font-size:10px;
+      letter-spacing:.35em;
+      color:rgba(255,255,255,.35);
+      text-transform:uppercase;
+      animation:hint 2.5s ease-in-out infinite;
+    }
+    @keyframes hint{
+      0%,100%{opacity:.2;transform:translate(-50%,0)}
+      50%{opacity:.7;transform:translate(-50%,8px)}
+    }
+
+    @media (max-width:720px){
+      .topbar{font-size:10px;padding-left:6vw;padding-right:6vw}
+      .progress{right:4vw}
+      .scene{padding:15vh 8vw 12vh}
+      .en{font-size:16px}
+      .zh{font-size:12px}
+      .copy{max-width:90vw}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *,*::before,*::after{
+        animation-duration:.001ms!important;
+        animation-iteration-count:1!important;
+        scroll-behavior:auto!important;
+        transition-duration:.001ms!important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <span>PROJECT BEYOND</span>
+    <span id="counter">01 / 06</span>
+  </header>
+
+  <nav class="progress" aria-label="Scene progress">
+    <i class="active"></i><i></i><i></i><i></i><i></i><i></i>
+  </nav>
+
+  <main>
+    <section class="scene scene-silence" data-scene="01">
+      <div class="crosshair"></div>
+      <div class="pulse"></div>
+      <div class="copy">
+        <div class="eyebrow">Silence</div>
+        <p class="en">There is something beyond the silence.</p>
+        <p class="zh">寂静之外，似乎有什么正在回应。</p>
+      </div>
+      <div class="scroll-hint">Scroll to descend</div>
+    </section>
+
+    <section class="scene scene-signal" data-scene="02">
+      <div class="signal-ui" aria-hidden="true">
+        <div class="scan"></div>
+        <div class="wave"></div>
+      </div>
+      <div class="copy">
+        <div class="eyebrow">Signal</div>
+        <h2>Signal Detected</h2>
+        <p class="en">Every journey begins with a signal.</p>
+        <p class="zh">每一次远行，都始于某种召唤。</p>
+      </div>
+    </section>
+
+    <section class="scene scene-departure" data-scene="03">
+      <div class="departure-visual" aria-hidden="true">
+        <div class="horizon"></div>
+        <div class="ship"></div>
+      </div>
+      <div class="copy">
+        <div class="eyebrow">Departure</div>
+        <h2>Leave The Known</h2>
+        <p class="en">The first distance we cross is not space. It is fear.</p>
+        <p class="zh">我们最先跨越的，不是宇宙，而是恐惧。</p>
+      </div>
+    </section>
+
+    <section class="scene scene-wormhole" data-scene="04">
+      <div class="orbit" aria-hidden="true">
+        <div class="probe"></div>
+      </div>
+      <div class="wormhole" aria-hidden="true"></div>
+      <div class="copy">
+        <div class="eyebrow">Wormhole</div>
+        <h2>Direction Fails</h2>
+        <p class="en">Beyond this point, distance loses meaning.</p>
+        <p class="zh">从这里开始，距离将失去意义。</p>
+      </div>
+    </section>
+
+    <section class="scene scene-singularity" data-scene="05">
+      <div class="singularity" aria-hidden="true"></div>
+      <div class="copy">
+        <div class="eyebrow">Singularity</div>
+        <h2>No Return</h2>
+        <p class="en">At the edge of everything, certainty disappears.</p>
+        <p class="zh">在一切的边缘，确定性开始消失。</p>
+      </div>
+    </section>
+
+    <section class="scene scene-beyond" data-scene="06">
+      <div class="beyond-line" aria-hidden="true"></div>
+      <div class="copy">
+        <div class="eyebrow">Beyond</div>
+        <h1>BEYOND</h1>
+        <p class="en">The unknown is not the end. It is where we begin.</p>
+        <p class="zh">未知不是终点，而是开始。</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const scenes = [...document.querySelectorAll('.scene')];
+    const markers = [...document.querySelectorAll('.progress i')];
+    const counter = document.getElementById('counter');
+    const crosshair = document.querySelector('.crosshair');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const index = scenes.indexOf(entry.target);
+        scenes.forEach((scene, i) => scene.classList.toggle('in-view', i === index));
+        markers.forEach((marker, i) => marker.classList.toggle('active', i === index));
+        counter.textContent = String(index + 1).padStart(2, '0') + ' / 06';
+      });
+    }, { threshold: 0.55 });
+
+    scenes.forEach(scene => observer.observe(scene));
+
+    window.addEventListener('pointermove', (event) => {
+      if (!crosshair) return;
+      const x = (event.clientX / window.innerWidth - 0.5) * 18;
+      const y = (event.clientY / window.innerHeight - 0.5) * 18;
+      crosshair.style.setProperty('--px', x + 'px');
+      crosshair.style.setProperty('--py', y + 'px');
+    }, { passive: true });
+
+    scenes[0].classList.add('in-view');
+  </script>
+</body>
+</html>
